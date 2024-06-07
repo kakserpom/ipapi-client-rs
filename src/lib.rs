@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GeoipData {
-    pub status: String,
+    pub status: Option<String>,
     pub message: Option<String>,
     pub continent: Option<String>,
     #[serde(rename = "continentCode")]
@@ -29,7 +28,40 @@ pub struct GeoipData {
     pub mobile: Option<bool>,
     pub proxy: Option<bool>,
     pub hosting: Option<bool>,
-    pub query: String,
+    pub query: Option<String>,
+}
+use std::fmt;
+impl fmt::Display for GeoipData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut address_parts = Vec::new();
+
+        if let Some(ref city) = self.city {
+            address_parts.push(city.clone());
+        }
+        if let Some(ref district) = self.district {
+            address_parts.push(district.clone());
+        }
+        if let Some(ref region) = self.region {
+            address_parts.push(region.clone());
+        }
+        if let Some(ref country) = self.country {
+            address_parts.push(country.clone());
+        }
+        if let Some(ref continent) = self.continent {
+            address_parts.push(continent.clone());
+        }
+
+        write!(f, "{}", address_parts.join(", "))
+    }
+}
+
+impl GeoipData {
+    pub fn success(&self) -> bool {
+        match &self.status {
+            Some(x) if x.eq("success") => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -60,7 +92,7 @@ impl IpApiClient {
 
     pub async fn lookup(
         &self,
-        ip: String,
+        ip: Option<String>,
         lang: Option<String>,
         fields: Option<Vec<String>>,
     ) -> Result<GeoipData, reqwest::Error> {
@@ -75,8 +107,9 @@ impl IpApiClient {
             params.push(("accessKey", x.clone()));
         }
         let mut url = reqwest::Url::parse_with_params(&self.base_url, params).unwrap();
-        url.path_segments_mut().unwrap().push(ip.as_str());
-        let response = self.client.get(url).send().await?;
-        Ok(response.json().await?)
+        if let Some(x) = ip {
+            url.path_segments_mut().unwrap().push(x.as_str());
+        }
+        Ok(self.client.get(url).send().await?.json().await?)
     }
 }

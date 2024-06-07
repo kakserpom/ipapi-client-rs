@@ -1,9 +1,9 @@
 [package]
-name = "mapsco-client"
+name = "ipapi-client"
 version = "0.1.1"
 edition = "2021"
-repository = "https://github.com/kakserpom/mapsco-client-rs"
-description = "An API client for geocode.maps.co"
+repository = "https://github.com/kakserpom/ipapi-client-rs"
+description = "An API client for ip-api.com"
 license = "MIT"
 [dependencies]
 anyhow = {optional = true, version = "1.0.86" }

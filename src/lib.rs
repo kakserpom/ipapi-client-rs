@@ -1,88 +1,82 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct LocationData {
-    pub place_id: i64,
-    pub licence: String,
-    pub osm_type: String,
-    pub osm_id: i64,
-    pub lat: String,
-    pub lon: String,
-    pub display_name: String,
-    pub address: Address,
-    pub boundingbox: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Address {
-    pub house_number: Option<String>,
-    pub road: Option<String>,
-    pub suburb: Option<String>,
+pub struct GeoipData {
+    pub status: String,
+    pub message: Option<String>,
+    pub continent: Option<String>,
+    #[serde(rename = "continentCode")]
+    pub continent_code: Option<String>,
+    pub country: Option<String>,
+    #[serde(rename = "countryCode")]
+    pub country_code: Option<String>,
+    pub region: Option<String>,
+    #[serde(rename = "regionName")]
+    pub region_name: Option<String>,
     pub city: Option<String>,
-    pub town: Option<String>,
-    pub village: Option<String>,
-    pub county: Option<String>,
-    pub state: String,
-    #[serde(rename = "ISO3166-2-lvl4")]
-    pub iso3166_2_lvl4: String,
-    pub postcode: Option<String>,
-    pub country: String,
-    pub country_code: String,
+    pub district: Option<String>,
+    pub zip: Option<String>,
+    pub lat: Option<f64>,
+    pub lon: Option<f64>,
+    pub timezone: Option<String>,
+    pub offset: Option<i32>,
+    pub currency: Option<String>,
+    pub isp: Option<String>,
+    pub org: Option<String>,
+    pub r#as: Option<String>,
+    pub asname: Option<String>,
+    pub reverse: Option<String>,
+    pub mobile: Option<bool>,
+    pub proxy: Option<bool>,
+    pub hosting: Option<bool>,
+    pub query: String,
 }
 
 #[derive(Clone)]
 #[cfg(feature = "reqwest")]
-pub struct MapscoClient {
+pub struct IpApiClient {
     client: reqwest::Client,
     base_url: String,
-    api_key: String,
+    access_key: Option<String>,
 }
 #[cfg(feature = "reqwest")]
 extern crate reqwest;
 #[cfg(feature = "reqwest")]
-impl MapscoClient {
+impl IpApiClient {
     pub fn new_from_env() -> Self {
-        Self::new(
-            std::env::var("MAPSCO_API_KEY")
-                .expect("MAPSCO_API_KEY must be set")
-                .to_string(),
-        )
+        Self::new(if let Ok(x) = std::env::var("IPAPI_ACCESS_KEY") {
+            Some(x)
+        } else {
+            None
+        })
     }
-    pub fn new(api_key: String) -> Self {
+    pub fn new(access_key: Option<String>) -> Self {
         Self {
-            api_key,
+            access_key,
             client: reqwest::Client::new(),
-            base_url: "https://geocode.maps.co/reverse".to_string(),
+            base_url: "http://ip-api.com/json".into(),
         }
     }
 
-    pub async fn reverse_geocode(
+    pub async fn lookup(
         &self,
-        lat: f64,
-        lon: f64,
-    ) -> Result<LocationData, reqwest::Error> {
-        let url = reqwest::Url::parse_with_params(
-            &self.base_url,
-            &[
-                ("lat", lat.to_string()),
-                ("lon", lon.to_string()),
-                ("key", self.api_key.clone()),
-            ],
-        )
-        .unwrap();
+        ip: String,
+        lang: Option<String>,
+        fields: Option<Vec<String>>,
+    ) -> Result<GeoipData, reqwest::Error> {
+        let mut params = vec![];
+        if let Some(x) = lang {
+            params.push(("lang", x));
+        }
+        if let Some(x) = fields {
+            params.push(("fields", x.join(",")));
+        }
+        if let Some(x) = &self.access_key {
+            params.push(("accessKey", x.clone()));
+        }
+        let mut url = reqwest::Url::parse_with_params(&self.base_url, params).unwrap();
+        url.path_segments_mut().unwrap().push(ip.as_str());
         let response = self.client.get(url).send().await?;
-        let location_data: LocationData = response.json().await?;
-        Ok(location_data)
-    }
-
-    pub async fn search(&self, query: &str) -> Result<Vec<LocationData>, reqwest::Error> {
-        let url = reqwest::Url::parse_with_params(
-            &format!("{}/search", self.base_url),
-            &[("q", query.to_string()), ("key", self.api_key.clone())],
-        )
-        .unwrap();
-        let response = self.client.get(url).send().await?;
-        let search_results: Vec<LocationData> = response.json().await?;
-        Ok(search_results)
+        Ok(response.json().await?)
     }
 }

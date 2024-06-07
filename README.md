@@ -1,3 +1,3 @@
-# mapsco-client-rs
+# ipapi-client-rs
 
-An API client for https://geocode.maps.co/ in Rust.
+An API client for https://ipapi.com/ in Rust.

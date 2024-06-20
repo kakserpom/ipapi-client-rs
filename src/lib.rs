@@ -1,66 +1,76 @@
 use serde::{Deserialize, Serialize};
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct GeoipData {
-    pub status: Option<String>,
-    pub message: Option<String>,
-    pub continent: Option<String>,
-    #[serde(rename = "continentCode")]
-    pub continent_code: Option<String>,
-    pub country: Option<String>,
-    #[serde(rename = "countryCode")]
-    pub country_code: Option<String>,
-    pub region: Option<String>,
-    #[serde(rename = "regionName")]
-    pub region_name: Option<String>,
-    pub city: Option<String>,
-    pub district: Option<String>,
-    pub zip: Option<String>,
-    pub lat: Option<f64>,
-    pub lon: Option<f64>,
-    pub timezone: Option<String>,
-    pub offset: Option<i32>,
-    pub currency: Option<String>,
-    pub isp: Option<String>,
-    pub org: Option<String>,
-    pub r#as: Option<String>,
-    pub asname: Option<String>,
-    pub reverse: Option<String>,
-    pub mobile: Option<bool>,
-    pub proxy: Option<bool>,
-    pub hosting: Option<bool>,
-    pub query: Option<String>,
+#[derive(Serialize, Deserialize, Debug)]
+pub struct IpInfo {
+    pub ip: String,
+    #[serde(rename = "type")]
+    pub ip_type: String,
+    pub continent_code: String,
+    pub continent_name: String,
+    pub country_code: String,
+    pub country_name: String,
+    pub region_code: String,
+    pub region_name: String,
+    pub city: String,
+    pub zip: String,
+    pub latitude: f64,
+    pub longitude: f64,
+    pub location: Location,
+    pub time_zone: TimeZone,
+    pub currency: Currency,
+    pub connection: Connection,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Location {
+    pub geoname_id: u32,
+    pub capital: String,
+    pub languages: Vec<Language>,
+    pub country_flag: String,
+    pub country_flag_emoji: String,
+    pub country_flag_emoji_unicode: String,
+    pub calling_code: String,
+    pub is_eu: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Language {
+    pub code: String,
+    pub name: String,
+    pub native: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TimeZone {
+    pub id: String,
+    pub current_time: String,
+    pub gmt_offset: i32,
+    pub code: String,
+    pub is_daylight_saving: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Currency {
+    pub code: String,
+    pub name: String,
+    pub plural: String,
+    pub symbol: String,
+    pub symbol_native: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Connection {
+    pub asn: u32,
+    pub isp: String,
 }
 use std::fmt;
-impl fmt::Display for GeoipData {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut address_parts = Vec::new();
 
-        if let Some(ref city) = self.city {
-            address_parts.push(city.clone());
-        }
-        if let Some(ref district) = self.district {
-            address_parts.push(district.clone());
-        }
-        if let Some(ref region) = self.region {
-            address_parts.push(region.clone());
-        }
-        if let Some(ref country) = self.country {
-            address_parts.push(country.clone());
-        }
-        if let Some(ref continent) = self.continent {
-            address_parts.push(continent.clone());
-        }
-
-        write!(f, "{}", address_parts.join(", "))
-    }
-}
-
-impl GeoipData {
-    pub fn success(&self) -> bool {
-        match &self.status {
-            Some(x) if x.eq("success") => true,
-            _ => false,
-        }
+impl fmt::Display for IpInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}, {}, {}, {}",
+            self.city, self.region_name, self.country_name, self.zip
+        )
     }
 }
 
@@ -86,30 +96,17 @@ impl IpApiClient {
         Self {
             access_key,
             client: reqwest::Client::new(),
-            base_url: "http://ip-api.com/json".into(),
+            base_url: "https://api.ipapi.com/api".into(),
         }
     }
 
-    pub async fn lookup(
-        &self,
-        ip: Option<String>,
-        lang: Option<String>,
-        fields: Option<Vec<String>>,
-    ) -> Result<GeoipData, reqwest::Error> {
+    pub async fn lookup(&self, ip: String) -> Result<IpInfo, reqwest::Error> {
         let mut params = vec![];
-        if let Some(x) = lang {
-            params.push(("lang", x));
-        }
-        if let Some(x) = fields {
-            params.push(("fields", x.join(",")));
-        }
         if let Some(x) = &self.access_key {
-            params.push(("accessKey", x.clone()));
+            params.push(("access_key", x.clone()));
         }
         let mut url = reqwest::Url::parse_with_params(&self.base_url, params).unwrap();
-        if let Some(x) = ip {
-            url.path_segments_mut().unwrap().push(x.as_str());
-        }
+        url.path_segments_mut().unwrap().push(ip.as_str());
         Ok(self.client.get(url).send().await?.json().await?)
     }
 }

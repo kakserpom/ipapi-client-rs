@@ -1,6 +1,6 @@
 [package]
 name = "ipapi-client"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 repository = "https://github.com/kakserpom/ipapi-client-rs"
 description = "An API client for ipapi.com"

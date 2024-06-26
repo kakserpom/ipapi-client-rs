@@ -3,7 +3,7 @@ name = "ipapi-client"
 version = "0.3.0"
 edition = "2021"
 repository = "https://github.com/kakserpom/ipapi-client-rs"
-description = "An API client for ip-api.com"
+description = "An API client for ipapi.com"
 license = "MIT"
 [dependencies]
 anyhow = {optional = true, version = "1.0.86" }
